@@ -1426,11 +1426,11 @@ const Ink = (() => {
       logo: 'superblock-logo.png',
       reminder: 'Superblock needs a slot booking on weekday evenings &amp; weekends — ' +
                 '<a href="https://www.superblock.nrw/" target="_blank" rel="noopener">book it here</a>.' },
-    { name: 'Einstein Düsseldorf', emoji: '⚡',
-      note: 'the power one. 1,725 m² of wall',
+    { name: 'Einstein Düsseldorf', emoji: '🦧',
+      note: 'the power one. 1,725 m² of pain',
       address: 'Lierenfelder Str. 49, 40231 Düsseldorf' },
     { name: 'You pick', emoji: '🎲', note: 'choose from the list', pick: true },
-    { name: 'Other gym', emoji: '✨', note: 'type it in', custom: true }
+    { name: 'Other gym', emoji: '💡', note: 'type it in', custom: true }
   ];
 
   // ✏️ the dropdown behind "You pick", grouped by location.
@@ -1746,7 +1746,7 @@ const Ink = (() => {
 
     const grid = $('subGrid');
     grid.innerHTML = '';
-    p.items.concat([['Custom', '✨', true]]).forEach(([label, emoji, isCustom]) => {
+    p.items.concat([['Custom', '✏️', true]]).forEach(([label, emoji, isCustom]) => {
       const c = document.createElement('button');
       c.type = 'button';
       c.className = 'card';
