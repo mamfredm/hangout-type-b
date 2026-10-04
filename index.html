@@ -25,7 +25,7 @@
                                  (and the booking form asks for a name)
 
      SCREENS (only one visible at a time, via .show):
-       #stage → #burst → #category → #sub → #twist → #energy → #bookTime → #finalMsg
+       #stage → #burst → #category → #sub → #twist → #gym → #energy → #bookTime → #finalMsg
      Search for "SCREEN" to jump around. All wording you might want to
      change is marked with ✏️.
      ═══════════════════════════════════════════════════════════════ */
@@ -503,6 +503,69 @@
   #twist.show > #twistOk, #twist.show > #twistNo { animation-delay: 1.5s; }
   #twistNo[hidden] { display: none; }
 
+  /* ---- GYM PICKER (#gym): reuses the .lane cards ---- */
+  #gymList .lane small { max-width: 240px; }
+
+  /* the home gym gets the big card: logo slot, badge, yellow frame */
+  #gymList .lane.featured {
+    padding: 20px;
+    border-color: var(--yellow);
+    box-shadow: 0 0 0 4px rgba(252, 186, 1, 0.12), 0 14px 34px rgba(0, 0, 0, 0.35);
+  }
+
+  #gymList .lane.featured b { font-size: 22px; }
+
+  .gym-logo {
+    flex: none;
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    background: var(--cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 30px;
+  }
+
+  .gym-logo img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+
+  .gym-badge {
+    display: inline-block;
+    margin-bottom: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--yellow);
+    color: var(--char);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  #gymList .lane.selected .gym-badge { background: var(--char); color: var(--yellow); }
+
+  /* "you pick" dropdown */
+  .gym-select {
+    width: 290px;
+    max-width: 100%;
+    padding: 13px 40px 13px 16px;
+    border-radius: 12px;
+    border: 2px solid var(--char-3);
+    background: var(--char-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23fcba01' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 16px center;
+    color: var(--cream);
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 600;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+  }
+
+  .gym-select:focus { border-color: var(--yellow); }
+
+  .gym-reminder { margin-top: -12px; }
+  .gym-reminder[hidden] { display: none; }
+  .gym-reminder a { color: var(--yellow); font-weight: 700; }
+
   /* ---- SCREEN 5 (#energy): slider + stakes switch ---- */
   .energy-emoji { font-size: 64px; line-height: 1; margin: 4px 0 12px; }
   .energy-emoji.pop { animation: popIn 0.35s var(--ease-pop); }
@@ -933,10 +996,27 @@
   <button type="button" class="text-link" id="twistNo">but I wanted pizza</button>
 </div>
 
+<!-- GYM PICKER -->
+<div class="screen" id="gym">
+  <button class="back-link" id="backFromGym">‹ back</button>
+  <div class="eyebrow">round three</div>
+  <h2>Which wall?</h2>
+  <p class="tag">pick a gym, or let me decide</p>
+  <div class="lanes" id="gymList"></div>
+  <div class="custom-wrap" id="gymPickWrap">
+    <select class="gym-select" id="gymSelect" aria-label="Pick a gym"></select>
+    <button class="btn-main" id="gymPickConfirm">that one</button>
+  </div>
+  <div class="custom-wrap" id="gymCustomWrap">
+    <input type="text" id="gymInput" placeholder="which gym?" maxlength="50" enterkeyhint="done">
+    <button class="btn-main" id="gymConfirm">that one</button>
+  </div>
+</div>
+
 <!-- SCREEN 5: energy level + stakes -->
 <div class="screen" id="energy">
-  <button class="back-link" id="backFromEnergy">‹ change plan</button>
-  <div class="eyebrow">round three</div>
+  <button class="back-link" id="backFromEnergy">‹ change gym</button>
+  <div class="eyebrow">round four</div>
   <h2>How hard are we going?</h2>
   <p class="tag">set the energy level</p>
   <div class="energy-emoji" id="energyEmoji" aria-hidden="true">😎</div>
@@ -954,7 +1034,7 @@
 <!-- SCREEN 6: booking -->
 <div class="screen" id="bookTime">
   <button class="back-link" data-go="energy">‹ change energy</button>
-  <div class="eyebrow">round four</div>
+  <div class="eyebrow">round five</div>
   <h2>When works?</h2>
   <p class="tag">pick a slot, the squad adapts</p>
   <div id="bookingMount"><div id="booking"></div></div>
@@ -979,9 +1059,10 @@
           <div><dt>Who</dt><dd id="psWho">you</dd></div>
           <div><dt>Plan</dt><dd id="psPlan">tba</dd></div>
           <div><dt>Energy</dt><dd id="psEnergy">tba</dd></div>
-          <div><dt>Stakes</dt><dd id="psStakes">none</dd></div>
-          <div><dt>Originally wanted</dt><dd id="psWanted">bouldering</dd></div>
+          <div><dt>Gym</dt><dd id="psGym">tba</dd></div>
           <div><dt>Chalk</dt><dd>mandatory</dd></div>
+          <div class="wide"><dt>Originally wanted</dt><dd id="psWanted">bouldering</dd></div>
+          <div class="wide"><dt>Stakes</dt><dd id="psStakes">none</dd></div>
           <div class="wide"><dt>When</dt><dd id="psWhen">TBA</dd></div>
         </dl>
       </div>
@@ -992,6 +1073,8 @@
     </div>
   </div>
   <p class="tag" id="finalSub">Screenshot the pass. Bring chalk. Flaking is not an option 🤝</p>
+  <p class="tag gym-reminder" id="gymMaps" hidden></p>
+  <p class="tag gym-reminder" id="gymReminder" hidden></p>
   <button type="button" class="text-link" id="shakeHint">psst… shake your phone</button>
 </div>
 
@@ -1029,7 +1112,7 @@
   // ✏️ the /exec URL of THIS repo's Code.gs deployment (Apps Script → Deploy).
   //    Until it's set, the page runs in 'mock' mode: fake times, nothing gets
   //    booked for real — handy for testing the look.
-  const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxF6xNQHtzBqELZuRkNuXDu549Jk10UTeVOF2oQ-yli45fJ041DF0Bibo9q8oybhBWspw/exec';
+  const ENDPOINT = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE';
 
   const PLANS = {
     food: {
@@ -1056,9 +1139,63 @@
   };
 
   // ✏️ what EVERY plan turns into. service must match Code.gs.
-  const BOULDER = {
-    label: 'Bouldering', emoji: '🧗', service: 'boulder', duration: 120,
-    stakes: 'fewest tops pays the döner after 🥙'
+  const BOULDER = { label: 'Bouldering', emoji: '🧗', service: 'boulder', duration: 120 };
+
+  // ✏️ THE GYM CARDS, top to bottom.
+  //    address  → becomes the calendar location (so maps/directions work)
+  //    logo     → image file in this repo; if it's missing, the emoji shows instead
+  //    featured → the big highlighted card, badge = the little pill above the name
+  //    reminder → shown on the last screen if this gym was picked (HTML allowed)
+  //    pick / custom → the dropdown card / the free-text card
+  const GYMS = [
+    { name: 'Superblock', emoji: '💛', featured: true, badge: '♥ home gym',
+      note: 'the greatest place in the world',
+      address: 'Fichtenstraße 53, 40233 Düsseldorf',
+      logo: 'superblock-logo.png',
+      reminder: 'Superblock needs a slot booking on weekday evenings &amp; weekends — ' +
+                '<a href="https://www.superblock.nrw/" target="_blank" rel="noopener">book it here</a>.' },
+    { name: 'Einstein Düsseldorf', emoji: '⚡',
+      note: 'the power one. 1,725 m² of wall',
+      address: 'Lierenfelder Str. 49, 40231 Düsseldorf' },
+    { name: 'You pick', emoji: '🎲', note: 'choose from the list', pick: true },
+    { name: 'Other gym', emoji: '✨', note: 'type it in', custom: true }
+  ];
+
+  // ✏️ the dropdown behind "You pick", grouped by location.
+  //    Each location becomes a heading in the dropdown, in this order.
+  //    To add a gym: one line { name, address } under its location.
+  //    To add a location: copy a whole block.
+  const OTHER_GYMS = [
+    { location: 'Düsseldorf', gyms: [
+      { name: 'Monkeyspot Düsseldorf',     address: 'Schiessstraße 52, 40549 Düsseldorf' }
+    ]},
+    { location: 'Duisburg', gyms: [
+      { name: 'Monkeyspot Duisburg',       address: 'Neuenhofstraße 91, 47055 Duisburg' },
+      { name: 'Stuntwerk Duisburg',        address: 'Neudorfer Str. 109-113, 47057 Duisburg' },
+      { name: 'Einstein Duisburg',         address: 'Essenberger Straße 85, 47059 Duisburg' }
+    ]},
+    { location: 'Wuppertal', gyms: [
+      { name: 'Prisma',                    address: 'Vohwinkeler Straße 119, 42329 Wuppertal' }
+    ]},
+    { location: 'Köln', gyms: [
+      { name: 'Boulderplanet',             address: 'Oskar-Jäger-Straße 143h, 50825 Köln' }
+    ]},
+    { location: 'Dortmund', gyms: [
+      { name: 'Boulderwelt Dortmund',      address: 'Brennaborstraße 10, 44149 Dortmund' },
+      { name: 'Kletterhalle Bergwerk',     address: 'Emscherallee 33, 44369 Dortmund' }
+    ]}
+  ];
+  const GYM_SURPRISE = "no idea, surprise me";  // last dropdown entry → "tbd"
+
+
+  // ✏️ the stakes: the wish they got denied becomes the bet.
+  //    {x} = what they wanted, {e} = its emoji. 'fallback' = wheel / chose bouldering.
+  const STAKES = {
+    food:     'fewest tops pays the {x} after {e}',
+    drinks:   'fewest tops pays the first round ({x} {e})',
+    sport:    'fewest tops has to come to {x} next time {e}',
+    custom:   'fewest tops pays for "{x}" after',
+    fallback: 'fewest tops pays the döner after 🥙'
   };
 
   // ✏️ the quip on the plot twist screen, per lane ({x} = what they picked)
@@ -1122,9 +1259,9 @@
   let friendName = urlName;
   if (urlName) $('friendName').textContent = urlName;
 
-  const state = { cat: null, activity: null, wanted: null, energy: ENERGY[2], stakes: true };
+  const state = { cat: null, activity: null, wanted: null, gym: null, gymInfo: null, energy: ENERGY[2], stakes: true };
 
-  const screens = ['burst', 'category', 'sub', 'twist', 'energy', 'bookTime', 'finalMsg'];
+  const screens = ['burst', 'category', 'sub', 'twist', 'gym', 'energy', 'bookTime', 'finalMsg'];
   function show(id) {
     screens.forEach(s => $(s).classList.toggle('show', s === id));
     $(id).scrollTop = 0;
@@ -1352,11 +1489,11 @@
     state.cat = cat;
     state.activity = { label: BOULDER.label, emoji: BOULDER.emoji, viaWheel: !!viaWheel };
     cameFromWheel = !!viaWheel;
-    updateStakesText();
 
     const already = label.toLowerCase().includes('boulder');
-    state.wanted = (viaWheel || already) ? null : { label, emoji };
-    if (viaWheel) return show('energy');  // the wheel only knows bouldering anyway
+    state.wanted = (viaWheel || already) ? null : { label, emoji, cat, custom: !!isCustom };
+    updateStakesText();
+    if (viaWheel) return show('gym');  // the wheel only knows bouldering anyway
     showTwist(cat, label, emoji, isCustom, already);
   }
 
@@ -1393,9 +1530,83 @@
     if (navigator.vibrate) navigator.vibrate([15, 30, 15]);
   });
 
-  $('twistOk').addEventListener('click', () => show('energy'));
+  $('twistOk').addEventListener('click', () => show('gym'));
 
-  $('backFromEnergy').addEventListener('click', () => show(cameFromWheel ? 'category' : 'twist'));
+  /* ═══════════════════════════════════════════════════════════════
+     GYM PICKER — built from GYMS above
+     ═══════════════════════════════════════════════════════════════ */
+
+  const gymList = $('gymList');
+
+  function chooseGym(info) {
+    state.gym = info ? info.name : 'tbd, you pick';
+    state.gymInfo = info || null;
+    setTimeout(() => show('energy'), 220);
+  }
+
+  GYMS.forEach(g => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'lane' + (g.featured ? ' featured' : '');
+    b.innerHTML = `<span class="emoji"></span><span>${g.badge ? '<span class="gym-badge"></span><br>' : ''}<b></b><small></small></span><span class="arrow">→</span>`;
+    if (g.badge) b.querySelector('.gym-badge').textContent = g.badge;
+    b.querySelector('b').textContent = g.name;
+    b.querySelector('small').textContent = g.note || '';
+
+    // logo slot: shows the image if the file exists, the emoji otherwise
+    const icon = b.querySelector('.emoji');
+    if (g.logo) {
+      icon.className = 'gym-logo';
+      const img = new Image();
+      img.alt = '';
+      img.onload = () => { icon.textContent = ''; icon.appendChild(img); };
+      img.src = g.logo;
+      icon.textContent = g.emoji;
+    } else {
+      icon.textContent = g.emoji;
+    }
+
+    b.addEventListener('click', () => {
+      gymList.querySelectorAll('.lane').forEach(l => l.classList.toggle('selected', l === b));
+      $('gymCustomWrap').classList.toggle('show', !!g.custom);
+      $('gymPickWrap').classList.toggle('show', !!g.pick);
+      if (g.custom) return $('gymInput').focus();
+      if (g.pick) return $('gymSelect').focus();
+      chooseGym(g);
+    });
+    gymList.appendChild(b);
+  });
+
+  // dropdown options
+  const sel = $('gymSelect');
+  sel.innerHTML = '<option value="" disabled selected>pick a gym…</option>';
+  OTHER_GYMS.forEach((group, gi) => {
+    const og = document.createElement('optgroup');
+    og.label = group.location;
+    group.gyms.forEach((g, i) => og.appendChild(new Option(g.name, gi + ':' + i)));
+    sel.appendChild(og);
+  });
+  const anyOg = document.createElement('optgroup');
+  anyOg.label = '…or';
+  anyOg.appendChild(new Option(GYM_SURPRISE, 'tbd'));
+  sel.appendChild(anyOg);
+
+  $('gymPickConfirm').addEventListener('click', () => {
+    if (!sel.value) return sel.focus();
+    if (sel.value === 'tbd') return chooseGym(null);
+    const [gi, i] = sel.value.split(':').map(Number);
+    chooseGym(OTHER_GYMS[gi].gyms[i]);
+  });
+
+  $('gymConfirm').addEventListener('click', () => {
+    const v = $('gymInput').value.trim();
+    if (!v) return $('gymInput').focus();
+    chooseGym({ name: v });
+  });
+  $('gymInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('gymConfirm').click(); });
+
+  $('backFromGym').addEventListener('click', () => show(cameFromWheel ? 'category' : 'twist'));
+  $('backFromEnergy').addEventListener('click', () => show('gym'));
 
   $('energyRange').addEventListener('input', () => {
     state.energy = ENERGY[+$('energyRange').value];
@@ -1407,10 +1618,18 @@
     if (navigator.vibrate) navigator.vibrate(8);
   });
 
+  // the denied wish becomes the bet (see STAKES)
+  function stakesLine() {
+    const w = state.wanted;
+    if (!w) return STAKES.fallback;
+    const tpl = w.custom ? STAKES.custom : (STAKES[w.cat] || STAKES.fallback);
+    return tpl.replace('{x}', w.label).replace('{e}', w.emoji).trim();
+  }
+
   function updateStakesText() {
     state.stakes = $('stakesToggle').checked;
     $('stakesText').textContent = state.stakes
-      ? BOULDER.stakes
+      ? stakesLine()
       : 'no stakes (boring, but okay)';   // ✏️
   }
   $('stakesToggle').addEventListener('change', updateStakesText);
@@ -1434,7 +1653,7 @@
     $('booking').innerHTML = '';
 
     // calendar title, e.g. "Bouldering · project mode · with Tom (wanted: Pizza)"
-    const title = `${p.label} · ${state.energy.short}` + (friendName ? ` · with ${friendName}` : '') +
+    const title = `${p.label}${state.gym ? ' @ ' + state.gym : ''} · ${state.energy.short}` + (friendName ? ` · with ${friendName}` : '') +
                   (state.wanted ? ` (wanted: ${state.wanted.label})` : '');
 
     BookingWidget.init({
@@ -1459,8 +1678,10 @@
         friend: friendName || '',
         plan: planLine(),
         wanted: state.wanted ? `${state.wanted.label} ${state.wanted.emoji}` : '',
+        gym: state.gym || '',
+        address: state.gymInfo && state.gymInfo.address ? state.gymInfo.address : '',
         energy: state.energy.label,
-        stakes: state.stakes ? p.stakes : 'none'
+        stakes: state.stakes ? stakesLine() : 'none'
       }),
 
       consent: { required: true },
@@ -1510,7 +1731,23 @@
     $('psWho').textContent = friendName || 'you';
     $('psPlan').textContent = planLine();
     $('psEnergy').textContent = state.energy.label;
-    $('psStakes').textContent = state.stakes ? BOULDER.stakes : 'none (boring)';
+    $('psStakes').textContent = state.stakes ? stakesLine() : 'none (boring)';
+    $('psGym').textContent = state.gym || 'tba';
+    // 📍 tap-to-open maps link for gyms with an address
+    const addr = state.gymInfo && state.gymInfo.address;
+    $('gymMaps').hidden = !addr;
+    if (addr) {
+      const a = document.createElement('a');
+      a.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(state.gym + ', ' + addr);
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = addr;
+      $('gymMaps').replaceChildren('📍 ', a);
+    }
+
+    const rem = state.gymInfo && state.gymInfo.reminder;
+    $('gymReminder').hidden = !rem;
+    if (rem) $('gymReminder').innerHTML = rem;   // from GYMS above (your own text, so HTML is fine)
     $('psWanted').textContent = state.wanted ? `${state.wanted.label} ${state.wanted.emoji} (denied)` : 'bouldering, obviously';
     $('psWhen').textContent = when;
     $('psGate').textContent = GATES[Math.floor(Math.random() * GATES.length)];
