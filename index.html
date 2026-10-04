@@ -383,15 +383,17 @@
     align-items: center;
     gap: 16px;
     text-align: left;
-    padding: 18px 20px;
+    padding: 20px 22px;
     border-radius: 16px;
     background: var(--char-2);
-    border: 2px solid var(--char-3);
+    border: 0;
+    box-shadow: inset 0 0 0 2px var(--char-3);
     color: var(--cream);
-    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    font-family: var(--sans);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
 
-  .lane:hover { border-color: var(--yellow); transform: translateX(4px); }
+  .lane:hover { box-shadow: inset 0 0 0 2px var(--yellow); transform: translateX(4px); }
   .lane:active { transform: scale(0.98); }
 
   .lane .emoji { font-size: 34px; transition: transform 0.3s var(--ease-pop); }
@@ -402,7 +404,7 @@
 
   .lane .arrow { margin-left: auto; color: var(--yellow); font-size: 20px; font-weight: 800; }
 
-  .lane.selected { background: var(--yellow); border-color: var(--yellow); color: var(--char); }
+  .lane.selected { background: var(--yellow); box-shadow: inset 0 0 0 2px var(--yellow); color: var(--char); }
   .lane.selected small, .lane.selected .arrow { color: rgba(28, 27, 25, 0.7); }
 
   /* ---- SCREEN 4 (#sub): activity grid, filled from PLANS in JS ---- */
@@ -421,21 +423,23 @@
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    padding: 16px 8px;
+    padding: 18px 10px;
     border-radius: 14px;
     background: var(--char-2);
-    border: 2px solid var(--char-3);
+    border: 0;
+    box-shadow: inset 0 0 0 2px var(--char-3);
     color: var(--cream);
+    font-family: var(--sans);
     font-size: 13px;
     font-weight: 700;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .card .emoji { font-size: 28px; transition: transform 0.3s var(--ease-pop); }
-  .card:hover { border-color: var(--yellow); transform: translateY(-3px); }
+  .card:hover { box-shadow: inset 0 0 0 2px var(--yellow); transform: translateY(-3px); }
   .card:hover .emoji { transform: scale(1.18) rotate(-6deg); }
   .card:active { transform: scale(0.96); }
-  .card.selected { background: var(--yellow); border-color: var(--yellow); color: var(--char); }
+  .card.selected { background: var(--yellow); box-shadow: inset 0 0 0 2px var(--yellow); color: var(--char); }
 
   .custom-wrap {
     display: none;
@@ -508,9 +512,8 @@
 
   /* the home gym gets the big card: logo slot, badge, yellow frame */
   #gymList .lane.featured {
-    padding: 20px;
-    border-color: var(--yellow);
-    box-shadow: 0 0 0 4px rgba(252, 186, 1, 0.12), 0 14px 34px rgba(0, 0, 0, 0.35);
+    padding: 22px;
+    box-shadow: inset 0 0 0 2px var(--yellow), 0 0 0 4px rgba(252, 186, 1, 0.12), 0 14px 34px rgba(0, 0, 0, 0.35);
   }
 
   #gymList .lane.featured b { font-size: 22px; }
@@ -923,6 +926,26 @@
     100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.15) rotate(var(--rot)); }
   }
 
+
+  /* ═══════════════════════════════════════════════════════════════
+     INK fill (see the Ink script below). .ink-top is a copy of the
+     element's content in the "filled" colors, shown through a mask.
+     ═══════════════════════════════════════════════════════════════ */
+  .ink { position: relative; overflow: hidden; isolation: isolate; }
+  .ink-top {
+    position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background: var(--yellow); color: var(--char);
+    display: inherit; align-items: inherit; justify-content: inherit; flex-direction: inherit;
+    gap: inherit; padding: inherit; text-align: inherit; border-radius: inherit;
+    -webkit-mask: linear-gradient(transparent, transparent); mask: linear-gradient(transparent, transparent);
+    will-change: mask;
+  }
+  .ink-top small, .ink-top .arrow { color: rgba(28, 27, 25, 0.7) !important; }
+  .ink-top .gym-badge { background: var(--char); color: var(--yellow); }
+  #yes.ink .ink-top { background: var(--char); color: var(--yellow); display: flex; align-items: center; justify-content: center; }
+  #maybe.ink .ink-top { display: flex; align-items: center; justify-content: center; }
+  #maybe.ink-full { border-color: var(--yellow); }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -1097,6 +1120,187 @@
   </div>
 </div>
 
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   INK — the hover/tap fill on menus, gym cards and the ask buttons.
+   Ink.attach(element, 'brush' | 'splash' | 'drip') adds a yellow (or,
+   on #yes, charcoal) copy of the element's content on top, revealed
+   through a mask that's recalculated every screen refresh. The fill is
+   steered by measured coverage, so it grows evenly and ends firmly.
+   Ink.wait(element) = ms until that element is fully inked (use it as
+   the delay before moving to the next screen).
+   ═══════════════════════════════════════════════════════════════ */
+const Ink = (() => {
+  const DUR_IN = 540, DUR_OUT = 400;   // ms
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const canHover = window.matchMedia('(hover: hover)').matches;
+  const idle = window.requestIdleCallback || (fn => setTimeout(fn, 200));
+  const HIDDEN = 'linear-gradient(transparent, transparent)';
+
+  const rng = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const clamp01 = t => t < 0 ? 0 : t > 1 ? 1 : t;
+  const easeOut = t => 1 - Math.pow(1 - clamp01(t), 1.7);
+  const fillCurve = p => Math.pow(p, 1.15);
+
+  function plan(style, w, h, seed) {
+    const r = rng(seed), shapes = [], diag = Math.hypot(w, h);
+    if (style === 'splash') {
+      const ox = w * (0.05 + r() * 0.2), oy = h * (0.6 + r() * 0.35);
+      const n = Math.max(18, Math.min(48, Math.round(w * h / 1400)));
+      for (let i = 0; i < n; i++) {
+        const x = -0.05 * w + r() * 1.1 * w, y = -0.1 * h + r() * 1.2 * h;
+        const d = Math.hypot(x - ox, y - oy) / diag;
+        shapes.push({ k: 'c', x, y, a: d * 0.55 + r() * 0.1, len: 0.38, R: diag * (0.12 + r() * 0.12) });
+      }
+      for (let i = 0; i < 14; i++) {
+        const ang = r() * Math.PI * 2, dist = diag * (0.1 + r() * 0.35);
+        shapes.push({ k: 'c', x: ox + Math.cos(ang) * dist, y: oy + Math.sin(ang) * dist * 0.6, a: r() * 0.3, len: 0.15, R: 1.5 + r() * 3 });
+      }
+    } else if (style === 'brush') {
+      const rows = Math.max(3, Math.round(h / 22));
+      for (let i = 0; i < rows; i++) {
+        const rad = h / rows * 0.62 + r() * 2;
+        shapes.push({ k: 'stroke', y: (i + 0.5) * h / rows, rad, dir: i % 2 ? -1 : 1, W: w + 2 * rad,
+                      a: i * (0.45 / rows) + r() * 0.04, len: 0.5 });
+      }
+    } else {
+      const cols = Math.max(4, Math.round(w / 26));
+      for (let i = 0; i < cols; i++) {
+        const cw = w / cols * (1.25 + r() * 0.4);
+        shapes.push({ k: 'drip', x: (i + 0.5) * w / cols, cw, a: r() * 0.3, len: 0.5 + r() * 0.25, H: h + cw });
+      }
+    }
+    return shapes;
+  }
+
+  function covers(s, t, x, y) {
+    if (s.k === 'c') return Math.hypot(x - s.x, y - s.y) <= s.R * t;
+    if (s.k === 'stroke') {
+      const L = s.W * t, x0 = s.dir > 0 ? -s.rad : (s.W - s.rad) - L, tipX = s.dir > 0 ? x0 + L : x0;
+      return (x >= x0 && x <= x0 + L && Math.abs(y - s.y) <= s.rad) || Math.hypot(x - tipX, y - s.y) <= s.rad;
+    }
+    const L = s.H * t, half = s.cw / 2, end = Math.max(0, L - half);
+    return (Math.abs(x - s.x) <= half && y <= end) || Math.hypot(x - s.x, y - end) <= half;
+  }
+
+  function buildLUT(shapes, w, h) {
+    const N = 48, gx = 26, gy = 13, pts = [], cov = [];
+    for (let j = 0; j < gy; j++) for (let i = 0; i < gx; i++) pts.push([(i + 0.5) * w / gx, (j + 0.5) * h / gy]);
+    for (let n = 0; n <= N; n++) {
+      const live = shapes.map(s => [s, easeOut((n / N - s.a) / s.len)]).filter(([, t]) => t > 0);
+      let c = 0;
+      for (const [x, y] of pts) if (live.some(([s, t]) => covers(s, t, x, y))) c++;
+      cov.push(c / pts.length);
+    }
+    const max = cov[N] || 1, lut = [];
+    for (let k = 0; k <= 100; k++) {
+      const target = k / 100 * max;
+      let n = 0;
+      while (n < N && cov[n] < target) n++;
+      const c0 = n ? cov[n - 1] : 0, c1 = cov[n];
+      lut.push(n === 0 ? 0 : (n - 1) / N + (c1 > c0 ? (target - c0) / (c1 - c0) : 1) / N);
+    }
+    return lut;
+  }
+
+  function qFor(el, c) {
+    const f = clamp01(c) * 100, i = Math.floor(f), lut = el._lut;
+    return i >= 100 ? lut[100] : lut[i] + (lut[i + 1] - lut[i]) * (f - i);
+  }
+
+  function maskFor(el, p) {
+    const layers = [], q = qFor(el, fillCurve(p)), f = n => n.toFixed(1);
+    for (const s of el._shapes) {
+      const t = easeOut((q - s.a) / s.len);
+      if (t <= 0) continue;
+      if (s.k === 'c') {
+        layers.push(`radial-gradient(circle at ${f(s.x)}px ${f(s.y)}px, #000 ${f(s.R * t)}px, transparent ${f(s.R * t + 0.8)}px)`);
+      } else if (s.k === 'stroke') {
+        const L = s.W * t, x0 = s.dir > 0 ? -s.rad : (s.W - s.rad) - L, tipX = s.dir > 0 ? x0 + L : x0;
+        layers.push(`linear-gradient(#000, #000) ${f(x0)}px ${f(s.y - s.rad)}px / ${f(L)}px ${f(2 * s.rad)}px no-repeat`);
+        layers.push(`radial-gradient(circle at ${f(tipX)}px ${f(s.y)}px, #000 ${f(s.rad)}px, transparent ${f(s.rad + 0.8)}px)`);
+      } else {
+        const half = s.cw / 2, end = Math.max(0, s.H * t - half);
+        layers.push(`linear-gradient(#000, #000) ${f(s.x - half)}px 0 / ${f(s.cw)}px ${f(end)}px no-repeat`);
+        layers.push(`radial-gradient(circle at ${f(s.x)}px ${f(end)}px, #000 ${f(half)}px, transparent ${f(half + 0.8)}px)`);
+      }
+    }
+    return layers.length ? layers.join(',') : HIDDEN;
+  }
+
+  function paint(el) {
+    const full = el._p >= 0.995;
+    const m = full ? 'none' : el._p <= 0 ? HIDDEN : maskFor(el, el._p);   // full → no mask at all
+    el._top.style.webkitMask = m;
+    el._top.style.mask = m;
+    el.classList.toggle('ink-full', full);
+  }
+
+  function ensurePlan(el) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return false;          // not on screen yet
+    const key = Math.round(r.width) + 'x' + Math.round(r.height);
+    if (el._planKey !== key) {
+      el._shapes = plan(el._style, r.width, r.height, el._seed);
+      el._lut = buildLUT(el._shapes, r.width, r.height);
+      el._planKey = key;
+    }
+    return true;
+  }
+
+  function go(el, target) {
+    if (!el._top) return;
+    el._target = target;
+    if (reduceMotion || !ensurePlan(el)) { el._p = target; paint(el); return; }
+    if (el._raf) return;
+    let last = performance.now();
+    const step = now => {
+      const dt = now - last; last = now;
+      const dir = Math.sign(el._target - el._p);
+      el._p = clamp01(el._p + dir * dt / (dir > 0 ? DUR_IN : DUR_OUT));
+      if ((dir > 0 && el._p > el._target) || (dir < 0 && el._p < el._target)) el._p = el._target;
+      paint(el);
+      el._raf = el._p !== el._target ? requestAnimationFrame(step) : null;
+    };
+    el._raf = requestAnimationFrame(step);
+  }
+
+  let seedCounter = 97;
+  function attach(el, style) {
+    if (el._top) return el;
+    el._style = style;
+    el._seed = (seedCounter = (seedCounter * 48271) % 2147483647);
+    el._p = 0;
+    el.classList.add('ink');
+    const top = document.createElement('span');
+    top.className = 'ink-top';
+    top.setAttribute('aria-hidden', 'true');
+    top.innerHTML = el.innerHTML;
+    el.appendChild(top);
+    el._top = top;
+    paint(el);
+    if (canHover) {
+      el.addEventListener('mouseenter', () => go(el, 1));
+      el.addEventListener('mouseleave', () => { if (!el.classList.contains('selected')) go(el, 0); });
+    }
+    el.addEventListener('click', () => {
+      go(el, 1);
+      // siblings that just lost "selected" pour their ink back out
+      if (el.parentElement) [...el.parentElement.children].forEach(o => {
+        if (o !== el && o._top && !o.classList.contains('selected')) go(o, 0);
+      });
+    });
+    idle(() => ensurePlan(el));     // measure ahead of the first tap when possible
+    return el;
+  }
+
+  // ms until el is fully inked — use as the delay before leaving the screen
+  const wait = el => reduceMotion || !el || !el._top ? 120 : Math.round((1 - el._p) * DUR_IN) + 40;
+
+  return { attach, go, wait };
+})();
+</script>
+
 <script src="booking-widget.js"></script>
 
 <script>
@@ -1154,11 +1358,11 @@
       logo: 'superblock-logo.png',
       reminder: 'Superblock needs a slot booking on weekday evenings &amp; weekends — ' +
                 '<a href="https://www.superblock.nrw/" target="_blank" rel="noopener">book it here</a>.' },
-    { name: 'Einstein Düsseldorf', emoji: '💪',
+    { name: 'Einstein Düsseldorf', emoji: '⚡',
       note: 'the power one. 1,725 m² of wall',
       address: 'Lierenfelder Str. 49, 40231 Düsseldorf' },
     { name: 'You pick', emoji: '🎲', note: 'choose from the list', pick: true },
-    { name: 'Other gym', emoji: '💡', note: 'type it in', custom: true }
+    { name: 'Other gym', emoji: '✨', note: 'type it in', custom: true }
   ];
 
   // ✏️ the dropdown behind "You pick", grouped by location.
@@ -1398,6 +1602,8 @@
 
   yesBtn.addEventListener('click', () => sayYes(yesBtn, 'yes'));
   maybeBtn.addEventListener('click', () => sayYes(maybeBtn, 'maybe'));
+  Ink.attach(yesBtn, 'drip');
+  Ink.attach(maybeBtn, 'drip');
 
   function sayYes(btn, via) {
     const r = btn.getBoundingClientRect();
@@ -1413,7 +1619,7 @@
       caption.classList.remove('visible');
       show('burst');
       launchConfetti(90);
-    }, reduceMotion ? 0 : 350);
+    }, reduceMotion ? 0 : (btn === noBtn ? 350 : Ink.wait(btn)));
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1434,9 +1640,10 @@
     b.querySelector('small').textContent = p.blurb;
     b.addEventListener('click', () => {
       lanes.querySelectorAll('.lane').forEach(l => l.classList.toggle('selected', l === b));
-      setTimeout(() => openSub(key), 220);
+      setTimeout(() => openSub(key), Ink.wait(b));   // move on once the ink is full
     });
     lanes.appendChild(b);
+    Ink.attach(b, 'brush');
   });
 
   function openSub(key) {
@@ -1464,9 +1671,10 @@
           return;
         }
         $('customWrap').classList.remove('show');
-        setTimeout(() => pickActivity(key, label, emoji), 300);
+        setTimeout(() => pickActivity(key, label, emoji), Ink.wait(c));
       });
       grid.appendChild(c);
+      Ink.attach(c, 'brush');
     });
     show('sub');
   }
@@ -1538,10 +1746,10 @@
 
   const gymList = $('gymList');
 
-  function chooseGym(info) {
+  function chooseGym(info, card) {
     state.gym = info ? info.name : 'tbd, you pick';
     state.gymInfo = info || null;
-    setTimeout(() => show('energy'), 220);
+    setTimeout(() => show('energy'), card ? Ink.wait(card) : 220);
   }
 
   GYMS.forEach(g => {
@@ -1572,9 +1780,10 @@
       $('gymPickWrap').classList.toggle('show', !!g.pick);
       if (g.custom) return $('gymInput').focus();
       if (g.pick) return $('gymSelect').focus();
-      chooseGym(g);
+      chooseGym(g, b);
     });
     gymList.appendChild(b);
+    Ink.attach(b, 'splash');
   });
 
   // dropdown options
