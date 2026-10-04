@@ -132,7 +132,7 @@
     letter-spacing: -0.03em;
     line-height: 1.05;
     margin: 0 0 16px;
-    max-width: 700px;
+    max-width: min(700px, 100%);
     text-wrap: balance;
   }
 
@@ -140,6 +140,8 @@
   .name {
     position: relative;
     white-space: nowrap;
+    -webkit-box-decoration-break: clone;   /* marker continues on each line if it wraps */
+    box-decoration-break: clone;
     color: var(--char);
     padding: 0 0.12em;
     background: linear-gradient(var(--yellow), var(--yellow)) no-repeat left 55% / 0% 78%;
@@ -153,6 +155,11 @@
     font-size: 14px;
     margin-bottom: 46px;
   }
+
+  /* name + its "?" stay together on one line… */
+  .name-line { white-space: nowrap; }
+  /* …unless a very long name still doesn't fit at the smallest size */
+  .name-line.wrap, .name-line.wrap .name { white-space: normal; overflow-wrap: anywhere; }
 
   .buttons {
     position: relative;
@@ -945,6 +952,12 @@
   #yes.ink .ink-top { background: var(--char); color: var(--yellow); display: flex; align-items: center; justify-content: center; }
   #maybe.ink .ink-top { display: flex; align-items: center; justify-content: center; }
   #maybe.ink-full { border-color: var(--yellow); }
+  /* a picked card keeps its normal look underneath — the ink does the
+     filling (otherwise the card turns yellow instantly on tap and the
+     animation is invisible on phones) */
+  .lane.ink.selected, .card.ink.selected {
+    background: var(--char-2); color: var(--cream); box-shadow: inset 0 0 0 2px var(--char-3);
+  }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -966,7 +979,7 @@
 <!-- SCREEN 1: the ask -->
 <div class="stage" id="stage">
   <div class="eyebrow">incoming side quest 📣</div>
-  <h1>You free this week, <span class="name" id="friendName">legend</span>?</h1>
+  <h1>You free this week, <span class="name-line" id="nameLine"><span class="name" id="friendName">legend</span>?</span></h1>
   <div class="sub">two buttons. one correct answer.</div>
   <div class="buttons" id="buttonRow">
     <button id="yes">I'm in</button>
@@ -1131,9 +1144,11 @@
    the delay before moving to the next screen).
    ═══════════════════════════════════════════════════════════════ */
 const Ink = (() => {
-  const DUR_IN = 540, DUR_OUT = 400;   // ms
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const canHover = window.matchMedia('(hover: hover)').matches;
+  // ✏️ fill speed in ms. Phones get more time: a tap is over in an instant,
+  //    so the ink needs longer to actually be seen. Hover can be quicker.
+  const DUR_IN = canHover ? 540 : 820, DUR_OUT = canHover ? 400 : 450;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const idle = window.requestIdleCallback || (fn => setTimeout(fn, 200));
   const HIDDEN = 'linear-gradient(transparent, transparent)';
 
@@ -1437,7 +1452,7 @@ const Ink = (() => {
                     'the couch will survive without you', 'excuse rejected', 'bold of you to assume you\'re busy',
                     'the group chat is watching', 'I\'ll wait at the top', 'skin grows back',
                     'we both know you\'re in'];
-  const SURRENDER_AT = 12;  // dodges before "busy" gives up
+  const SURRENDER_AT = 7;   // dodges before "busy" gives up
 
   // ✏️ the "psst…" link under the pass
   const SHAKE_TEXTS = {
@@ -1459,9 +1474,31 @@ const Ink = (() => {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ?name=Tom from the link (max 30 chars, only ever used as text)
-  const urlName = (new URLSearchParams(location.search).get('name') || '').trim().slice(0, 30);
+  const urlName = (new URLSearchParams(location.search).get('name') || '').trim().slice(0, 40);
   let friendName = urlName;
   if (urlName) $('friendName').textContent = urlName;
+
+  // Long names: shrink the headline step by step until the name fits on
+  // one line (down to 24px); only if it still doesn't fit, let it wrap.
+  function fitHeadline() {
+    const h1 = document.querySelector('#stage h1'), name = $('nameLine'), stage = $('stage');   // name + "?"
+    // available width = the stage minus its side padding (NOT the h1, which
+    // would happily grow past the screen edge to fit a long name)
+    const cs = getComputedStyle(stage);
+    const avail = Math.min(700, stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+    const tooWide = () => name.getBoundingClientRect().width + 2 > avail;
+    h1.style.fontSize = '';
+    name.classList.remove('wrap');
+    let size = parseFloat(getComputedStyle(h1).fontSize);
+    while (tooWide() && size > 24) {
+      size -= 1;
+      h1.style.fontSize = size + 'px';
+    }
+    if (tooWide()) name.classList.add('wrap');
+  }
+  fitHeadline();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeadline);
+  window.addEventListener('resize', fitHeadline);
 
   const state = { cat: null, activity: null, wanted: null, gym: null, gymInfo: null, energy: ENERGY[2], stakes: true };
 
