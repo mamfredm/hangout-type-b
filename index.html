@@ -1183,10 +1183,13 @@ const Ink = (() => {
                       a: i * (0.45 / rows) + r() * 0.04, len: 0.5 });
       }
     } else {
-      const cols = Math.max(4, Math.round(w / 26));
+      const cols = Math.max(7, Math.round(w / 18));
+      // evenly spread start times (shuffled), so columns rise one after another
+      const order = [...Array(cols).keys()].sort(() => r() - 0.5);
       for (let i = 0; i < cols; i++) {
-        const cw = w / cols * (1.25 + r() * 0.4);
-        shapes.push({ k: 'drip', x: (i + 0.5) * w / cols, cw, a: r() * 0.3, len: 0.5 + r() * 0.25, H: h + cw, h });
+        const cw = w / cols * (1.35 + r() * 0.35);
+        shapes.push({ k: 'drip', x: (i + 0.5) * w / cols, cw, a: order[i] / cols * 0.35 + r() * 0.03,
+                      len: 0.55 + r() * 0.15, H: h + 2 * cw, h });
       }
     }
     return shapes;
@@ -1199,26 +1202,63 @@ const Ink = (() => {
       return (x >= x0 && x <= x0 + L && Math.abs(y - s.y) <= s.rad) || Math.hypot(x - tipX, y - s.y) <= s.rad;
     }
     // 'drip' rises from the bottom (like a glass filling up), rounded top
-    const L = s.H * t, half = s.cw / 2, end = Math.max(0, L - half), top = s.h - end;
+    const half = s.cw / 2, top = s.h + half - s.H * t;   // head centre: starts half a column below the edge
     return (Math.abs(x - s.x) <= half && y >= top) || Math.hypot(x - s.x, y - top) <= half;
   }
 
-  function buildLUT(shapes, w, h) {
-    const N = 48, gx = 26, gy = 13, pts = [], cov = [];
-    for (let j = 0; j < gy; j++) for (let i = 0; i < gx; i++) pts.push([(i + 0.5) * w / gx, (j + 0.5) * h / gy]);
-    for (let n = 0; n <= N; n++) {
-      const live = shapes.map(s => [s, easeOut((n / N - s.a) / s.len)]).filter(([, t]) => t > 0);
-      let c = 0;
-      for (const [x, y] of pts) if (live.some(([s, t]) => covers(s, t, x, y))) c++;
-      cov.push(c / pts.length);
+  /* When (as shape growth t, 0..1) does shape s first cover point (x, y)?
+     Exact formulas for the simple shapes; a short binary search for the
+     rest (hearts). Infinity = this shape never reaches the point. */
+  function need(s, x, y, w, h) {
+    if (s.k === 'c') return Math.hypot(x - s.x, y - s.y) / s.R;
+    if (s.k === 'soft') return Math.hypot(x - s.x, y - s.y) / (s.R * 0.8);
+    if (s.k === 'stroke') {
+      const dy = Math.abs(y - s.y);
+      if (dy > s.rad) return Infinity;
+      const reach = Math.sqrt(s.rad * s.rad - dy * dy);
+      const L = s.dir > 0 ? x + s.rad - reach : s.W - s.rad - x - reach;
+      return Math.max(0, L) / s.W;
     }
-    const max = cov[N] || 1, lut = [];
-    for (let k = 0; k <= 100; k++) {
-      const target = k / 100 * max;
-      let n = 0;
-      while (n < N && cov[n] < target) n++;
-      const c0 = n ? cov[n - 1] : 0, c1 = cov[n];
-      lut.push(n === 0 ? 0 : (n - 1) / N + (c1 > c0 ? (target - c0) / (c1 - c0) : 1) / N);
+    if (s.k === 'drip') {                // rising column with a round head
+      const dx = Math.abs(x - s.x), half = s.cw / 2;
+      if (dx > half) return Infinity;
+      return Math.max(0, s.h + half - y - Math.sqrt(half * half - dx * dx)) / s.H;
+    }
+    if (!covers(s, 1, x, y, w, h)) return Infinity;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 12; i++) { const m = (lo + hi) / 2; if (covers(s, m, x, y, w, h)) hi = m; else lo = m; }
+    return hi;
+  }
+
+  /* Coverage → progress lookup table. For every sample point we compute
+     the moment it gets covered, sort those moments, and read off the
+     quantiles: lut[c] = raw progress at which c % of the card is inked.
+     Animating through it makes the VISIBLE fill grow evenly. This is a
+     direct calculation (no frame-by-frame simulation), so it's cheap. */
+  function buildLUT(shapes, w, h) {
+    const gx = Math.min(64, Math.max(26, Math.round(w / 4)));
+    const gy = Math.min(32, Math.max(13, Math.round(h / 3)));
+    const times = [];
+    for (let j = 0; j < gy; j++) {
+      const y = (j + 0.5) * h / gy;
+      for (let i = 0; i < gx; i++) {
+        const x = (i + 0.5) * w / gx;
+        let best = Infinity;
+        for (const s of shapes) {
+          const t = need(s, x, y, w, h);
+          if (t > 1) continue;
+          const q = s.a + s.len * (1 - Math.pow(1 - t, 1 / 1.7));   // inverse of easeOut
+          if (q < best) best = q;
+        }
+        if (best !== Infinity) times.push(best);
+      }
+    }
+    times.sort((a, b) => a - b);
+    const n = times.length, lut = [0];
+    for (let k = 1; k <= 100; k++) {
+      if (!n) { lut.push(k / 100); continue; }
+      const f = k / 100 * (n - 1), i = Math.floor(f);
+      lut.push(times[i] + (times[Math.min(n - 1, i + 1)] - times[i]) * (f - i));
     }
     return lut;
   }
@@ -1240,10 +1280,16 @@ const Ink = (() => {
         layers.push(`linear-gradient(#000, #000) ${f(x0)}px ${f(s.y - s.rad)}px / ${f(L)}px ${f(2 * s.rad)}px no-repeat`);
         layers.push(`radial-gradient(circle at ${f(tipX)}px ${f(s.y)}px, #000 ${f(s.rad)}px, transparent ${f(s.rad + 0.8)}px)`);
       } else {
-        const half = s.cw / 2, end = Math.max(0, s.H * t - half), top = s.h - end;
-        layers.push(`linear-gradient(#000, #000) ${f(s.x - half)}px ${f(top)}px / ${f(s.cw)}px ${f(end + 1)}px no-repeat`);
+        const half = s.cw / 2, top = s.h + half - s.H * t;
+        if (top < s.h) layers.push(`linear-gradient(#000, #000) ${f(s.x - half)}px ${f(top)}px / ${f(s.cw)}px ${f(s.h - top + 1)}px no-repeat`);
         layers.push(`radial-gradient(circle at ${f(s.x)}px ${f(top)}px, #000 ${f(half)}px, transparent ${f(half + 0.8)}px)`);
       }
+    }
+    // last stretch: fade in a full layer, so leftover soft rims / tiny gaps
+    // blend into "full" instead of snapping in a single frame
+    if (p > 0.82) {
+      const o = Math.pow((p - 0.82) / 0.18, 1.5).toFixed(3);
+      layers.push(`linear-gradient(rgba(0,0,0,${o}), rgba(0,0,0,${o}))`);
     }
     return layers.length ? layers.join(',') : HIDDEN;
   }
@@ -1311,6 +1357,8 @@ const Ink = (() => {
       });
     });
     idle(() => ensurePlan(el));     // measure ahead of the first tap when possible
+    // …and again whenever it appears / changes size (e.g. its screen opens)
+    if (window.ResizeObserver) new ResizeObserver(() => idle(() => ensurePlan(el))).observe(el);
     return el;
   }
 
